@@ -31,18 +31,24 @@ class Words:
         self._stale_thresh = stale_thresh
 
         with filename.open() as infile:
-            self._all_words = [
-                (word, count)
-                for line in infile.readlines()
-                for _, word, count_str in [line.strip().split("\t")]
-                if (
-                    (count := int(count_str)) > count_thresh
-                    and len(word) >= len_min
-                    and len(word) <= len_max
-                    and re.match(r"^[^\W\d_]+$", word)
+            self._all_words = list(
+                reversed(
+                    sorted(
+                        [
+                            (word, count)
+                            for line in infile.readlines()
+                            for _, word, count_str in [line.strip().split("\t")]
+                            if (
+                                (count := int(count_str)) > count_thresh
+                                and len(word) >= len_min
+                                and len(word) <= len_max
+                                and re.match(r"^[^\W\d_]+$", word)
+                            )
+                        ],
+                        key=lambda e: e[1],
+                    )
                 )
-            ]
-        random.shuffle(self._all_words)
+            )
 
     @property
     def _word_len(self) -> int:
@@ -53,7 +59,6 @@ class Words:
         return 6**self._num_dice
 
     def _optimize(self) -> list[str]:
-        result = []
         stale = 0
         score = None
 
@@ -78,25 +83,29 @@ class Words:
 
         while stale < self._stale_thresh:
             inner = random.randint(1, self._num_words)
-            outer = random.randint(self._num_words, len(self._all_words))
-            similarity[:, [inner, outer]] = similarity[:, [outer, inner]]
-            similarity[[inner, outer], :] = similarity[[outer, inner], :]
-            temp = np.sum(similarity[1 : self._num_words + 1, 1 : self._num_words + 1])
-            if score and temp > score + 0.0001:
-                stale += 1
+            outer = self._num_words
+            while outer <= len(self._all_words):
+                similarity[:, [inner, outer]] = similarity[:, [outer, inner]]
+                similarity[[inner, outer], :] = similarity[[outer, inner], :]
+                temp = np.sum(similarity[1 : self._num_words + 1, 1 : self._num_words + 1])
+
+                if not score or temp < score - 0.0001:
+                    stale = 0
+                    score = temp
+                    print(f"Optimizing: {score:.1f}")
+                    break
+
                 similarity[[outer, inner], :] = similarity[[inner, outer], :]
                 similarity[:, [outer, inner]] = similarity[:, [inner, outer]]
-                continue
-            stale = 0
-            score = temp
-            print(f"Optimizing: {score:.1f}")
+                stale += 1
+                outer += 1
 
-        result = list(
-            self._all_words[int(index)][0]
-            for index in similarity[0, 1 : self._num_words + 1]
+        return sorted(
+            list(
+                self._all_words[int(index)][0]
+                for index in similarity[0, 1 : self._num_words + 1]
+            )
         )
-        random.shuffle(result)
-        return result
 
     def write(self, filename: Path) -> None:
         words = self._optimize()
