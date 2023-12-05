@@ -57,29 +57,24 @@ class Words:
         stale = 0
         score = None
 
-        cache = Path("cache.npz")
-        if cache.exists():
-            similarity = np.load(cache)["similarity"]
-        else:
-            similarity = np.empty((self.wordlen + 1) ** 2).reshape(
-                self.wordlen + 1, self.wordlen + 1
-            )
-            for i in range(1, self.wordlen):
-                similarity[0, i] = i
-                similarity[i, 0] = i
+        similarity = np.empty((self._word_len + 1) ** 2).reshape(
+            self._word_len + 1, self._word_len + 1
+        )
+        for i in range(1, self._word_len):
+            similarity[0, i] = i
+            similarity[i, 0] = i
 
-            for li in range(0, self.wordlen):
-                for ri in range(0, self.wordlen):
-                    if li < ri:
-                        similarity[li + 1, ri + 1] = jellyfish.jaro_winkler_similarity(
-                            self._all_words[li][0], self._all_words[ri][0]
-                        )
-                if li % 100 == 99:
-                    print(
-                        f"Converted {100*li/len(self._all_words):2.2f}%",
-                        file=sys.stderr,
+        for li in range(0, self._word_len):
+            for ri in range(0, self._word_len):
+                if li < ri:
+                    similarity[li + 1, ri + 1] = jellyfish.jaro_winkler_similarity(
+                        self._all_words[li][0], self._all_words[ri][0]
                     )
-            np.savez(cache, similarity=similarity)
+            if li % 100 == 99:
+                print(
+                    f"Calculating similarity: {100*li/len(self._all_words):2.2f}%",
+                    file=sys.stderr,
+                )
 
         while stale < self._stale_thresh:
             inner = random.randint(1, self._num_words)
@@ -87,7 +82,7 @@ class Words:
             similarity[:, [inner, outer]] = similarity[:, [outer, inner]]
             similarity[[inner, outer], :] = similarity[[outer, inner], :]
             temp = np.sum(similarity[1 : self._num_words + 1, 1 : self._num_words + 1])
-            if score and temp > score + 0.01:
+            if score and temp > score + 0.0001:
                 stale += 1
                 similarity[[outer, inner], :] = similarity[[inner, outer], :]
                 similarity[:, [outer, inner]] = similarity[:, [inner, outer]]
@@ -148,7 +143,7 @@ if __name__ == "__main__":
         "-s",
         "--stale-thresh",
         type=int,
-        default=10,
+        default=100,
         help="Number of optimizations after which solution is considered stale (default: %(default)d)",
     )
     arguments = parser.parse_args()
