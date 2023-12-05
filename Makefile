@@ -1,6 +1,6 @@
 all: check
 
-PYTHON_PACKAGES = dicelist
+PYTHON_PACKAGES = dicelist dl/*.py
 
 include .devutils/Makefile.common
 

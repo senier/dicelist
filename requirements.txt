@@ -1,2 +1,2 @@
-jellyfish
-numpy
+jellyfish >=1.0.3, <1.1
+numpy >=1.26.2, <1.27
