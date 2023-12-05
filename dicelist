@@ -58,8 +58,7 @@ if __name__ == "__main__":
     )
     arguments = parser.parse_args()
 
-    logging.basicConfig(format="[%(asctime)s] %(message)s")
-    logging.getLogger().setLevel(logging.INFO)
+    logging.basicConfig(format="[%(asctime)s] %(message)s", level=logging.INFO)
 
     dl.Words(
         arguments.infile,

@@ -1,2 +1,4 @@
 /downloads
 /.venv
+/.coverage
+__pycache__

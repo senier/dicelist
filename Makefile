@@ -1,10 +1,14 @@
-all: check
+all: check test
 
-PYTHON_PACKAGES = dicelist dl/*.py
+PYTHON_PACKAGES = dicelist dl/*.py tests/*.py
 
 include .devutils/Makefile.common
 
 check: pyproject.toml
+
+test:
+	pytest -vv --cov=dl --cov=tests --cov-branch --cov-fail-under=0 --cov-report= tests/
+	coverage report --fail-under=100.0 --show-missing --skip-covered
 
 install_devel: .devutils/Makefile
 	make -C .devutils install_devel

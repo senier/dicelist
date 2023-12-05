@@ -10,10 +10,17 @@ import jellyfish
 import numpy as np
 
 
-def dice(value: int, num: int, pos: int = 0) -> str:
+class Error(Exception):
+    pass
+
+
+def dice_str(value: int, num_dice: int, pos: int = 0) -> str:
+    """Return the string representation of a value as a number of dice."""
+    if value > 6**num_dice - 1:
+        raise Error(f"Value {value} out of range for {num_dice} dice")
     if value == 0:
-        return (num - pos) * "1"
-    return dice(value // 6, num, pos + 1) + f"{value % 6 + 1}"
+        return (num_dice - pos) * "1"
+    return dice_str(value // 6, num_dice, pos + 1) + f"{value % 6 + 1}"
 
 
 class Words:
@@ -30,10 +37,11 @@ class Words:
         self._stale_thresh = stale_thresh
 
         with filename.open() as infile:
+            lines = list(infile.readlines())
             self._all_words = sorted(
                 [
                     (word, count)
-                    for line in infile.readlines()
+                    for line in lines
                     for _, word, count_str in [line.strip().split("\t")]
                     if (
                         (count := int(count_str)) > count_thresh
@@ -45,6 +53,12 @@ class Words:
                 key=lambda e: e[1],
                 reverse=True,
             )
+
+        if not self._all_words:
+            raise Error("No words found")
+
+        if len(self._all_words) < self._num_words:
+            raise Error(f"Expected at least {self._num_words} words, found {len(self._all_words)}")
 
     @property
     def _word_len(self) -> int:
@@ -75,7 +89,7 @@ class Words:
                         self._all_words[li][0],
                         self._all_words[ri][0],
                     )
-            if li % 100 == 99:
+            if li % 100 == 0:
                 logging.log(
                     logging.INFO,
                     "Calculating similarity: %2.2f%%",
@@ -111,4 +125,4 @@ class Words:
         words = self._optimize()
         with filename.open("w+") as outfile:
             for i in range(0, self._num_words):
-                print(f"{dice(i, self._num_dice)} {words[i]}", file=outfile)
+                print(f"{dice_str(i, self._num_dice)} {words[i]}", file=outfile)

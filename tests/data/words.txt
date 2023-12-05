@@ -1,0 +1,6 @@
+1	Wordone	500
+2	Wordtwo	400
+3	Wordthree	300
+4	Wordfour	200
+5	Wordfive	100
+6	Wordsix	100
