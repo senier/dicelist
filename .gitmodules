@@ -1,0 +1,3 @@
+[submodule ".devutils"]
+	path = .devutils
+	url = https://github.com/AdaCore/RecordFlux-devutils.git

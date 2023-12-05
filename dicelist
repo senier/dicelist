@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import argparse
+import logging
 import random
 import re
-import sys
-
 from pathlib import Path
+from typing import Optional
 
-import numpy as np
 import jellyfish
+import numpy as np
 
 
 def dice(value: int, num: int, pos: int = 0) -> str:
@@ -18,7 +20,7 @@ def dice(value: int, num: int, pos: int = 0) -> str:
 
 
 class Words:
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         filename: Path,
         num_dice: int,
@@ -27,27 +29,24 @@ class Words:
         len_max: int,
         stale_thresh: int,
     ):
-        self._num_dice = num_dice
+        self._num_dice: int = num_dice
         self._stale_thresh = stale_thresh
 
         with filename.open() as infile:
-            self._all_words = list(
-                reversed(
-                    sorted(
-                        [
-                            (word, count)
-                            for line in infile.readlines()
-                            for _, word, count_str in [line.strip().split("\t")]
-                            if (
-                                (count := int(count_str)) > count_thresh
-                                and len(word) >= len_min
-                                and len(word) <= len_max
-                                and re.match(r"^[^\W\d_]+$", word)
-                            )
-                        ],
-                        key=lambda e: e[1],
+            self._all_words = sorted(
+                [
+                    (word, count)
+                    for line in infile.readlines()
+                    for _, word, count_str in [line.strip().split("\t")]
+                    if (
+                        (count := int(count_str)) > count_thresh
+                        and len(word) >= len_min
+                        and len(word) <= len_max
+                        and re.match(r"^[^\W\d_]+$", word)
                     )
-                )
+                ],
+                key=lambda e: e[1],
+                reverse=True,
             )
 
     @property
@@ -56,14 +55,17 @@ class Words:
 
     @property
     def _num_words(self) -> int:
-        return 6**self._num_dice
+        result = 6**self._num_dice
+        assert isinstance(result, int)
+        return result
 
     def _optimize(self) -> list[str]:
         stale = 0
-        score = None
+        score: Optional[int] = None
 
         similarity = np.empty((self._word_len + 1) ** 2).reshape(
-            self._word_len + 1, self._word_len + 1
+            self._word_len + 1,
+            self._word_len + 1,
         )
         for i in range(1, self._word_len):
             similarity[0, i] = i
@@ -73,26 +75,30 @@ class Words:
             for ri in range(0, self._word_len):
                 if li < ri:
                     similarity[li + 1, ri + 1] = jellyfish.jaro_winkler_similarity(
-                        self._all_words[li][0], self._all_words[ri][0]
+                        self._all_words[li][0],
+                        self._all_words[ri][0],
                     )
             if li % 100 == 99:
-                print(
-                    f"Calculating similarity: {100*li/len(self._all_words):2.2f}%",
-                    file=sys.stderr,
+                logging.log(
+                    logging.INFO,
+                    "Calculating similarity: %2.2f%",
+                    100 * li / len(self._all_words),
                 )
 
         while stale < self._stale_thresh:
-            inner = random.randint(1, self._num_words)
+            inner = random.randint(1, self._num_words)  # noqa: S311
             outer = self._num_words
             while outer <= len(self._all_words):
                 similarity[:, [inner, outer]] = similarity[:, [outer, inner]]
                 similarity[[inner, outer], :] = similarity[[outer, inner], :]
-                temp = np.sum(similarity[1 : self._num_words + 1, 1 : self._num_words + 1])
+                temp = np.sum(
+                    similarity[1 : self._num_words + 1, 1 : self._num_words + 1],
+                )
 
-                if not score or temp < score - 0.0001:
+                if score is None or temp < score - 0.0001:
                     stale = 0
                     score = temp
-                    print(f"Optimizing: {score:.1f}")
+                    logging.log(logging.INFO, "Optimizing: %.1f", score)
                     break
 
                 similarity[[outer, inner], :] = similarity[[inner, outer], :]
@@ -101,10 +107,7 @@ class Words:
                 outer += 1
 
         return sorted(
-            list(
-                self._all_words[int(index)][0]
-                for index in similarity[0, 1 : self._num_words + 1]
-            )
+            self._all_words[int(index)][0] for index in similarity[0, 1 : self._num_words + 1]
         )
 
     def write(self, filename: Path) -> None:
@@ -118,7 +121,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-i", "--infile", type=Path, required=True, help="Corpora file")
     parser.add_argument(
-        "-o", "--outfile", type=Path, required=True, help="Output wordlist file"
+        "-o",
+        "--outfile",
+        type=Path,
+        required=True,
+        help="Output wordlist file",
     )
     parser.add_argument(
         "-n",
@@ -153,7 +160,10 @@ if __name__ == "__main__":
         "--stale-thresh",
         type=int,
         default=100,
-        help="Number of optimizations after which solution is considered stale (default: %(default)d)",
+        help=(
+            "Number of optimizations after which solution"
+            " is considered stale (default: %(default)d)"
+        ),
     )
     arguments = parser.parse_args()
 
