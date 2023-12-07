@@ -36,14 +36,14 @@ if __name__ == "__main__":
         "-l",
         "--len-min",
         type=int,
-        default=5,
+        default=3,
         help="Minimum word length (default: %(default)d)",
     )
     parser.add_argument(
         "-u",
         "--len-max",
         type=int,
-        default=14,
+        default=15,
         help="Maximum word length (default: %(default)d)",
     )
     parser.add_argument(

@@ -85,7 +85,7 @@ class Words:
         for li in range(0, self._word_len):
             for ri in range(0, self._word_len):
                 if li < ri:
-                    similarity[li + 1, ri + 1] = jellyfish.jaro_winkler_similarity(
+                    similarity[li + 1, ri + 1] = 1.0 - jellyfish.jaro_winkler_similarity(
                         self._all_words[li][0],
                         self._all_words[ri][0],
                     )
@@ -96,6 +96,7 @@ class Words:
                     100 * li / len(self._all_words),
                 )
 
+        steps = 0
         while stale < self._stale_thresh:
             inner = random.randint(1, self._num_words)  # noqa: S311
             outer = self._num_words
@@ -106,10 +107,11 @@ class Words:
                     similarity[1 : self._num_words + 1, 1 : self._num_words + 1],
                 )
 
+                steps += 1
                 if score is None or temp < score - 0.0001:
                     stale = 0
                     score = temp
-                    logging.log(logging.INFO, "Optimizing: %.1f", score)
+                    logging.log(logging.INFO, "Optimizing: %.1f [%d]", score, steps)
                     break
 
                 similarity[[outer, inner], :] = similarity[[inner, outer], :]
