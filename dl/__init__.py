@@ -32,9 +32,11 @@ class Words:
         len_min: int,
         len_max: int,
         stale_thresh: int,
+        step_thresh: Optional[int],
     ):
         self._num_dice: int = num_dice
         self._stale_thresh = stale_thresh
+        self._step_thresh = step_thresh
 
         with filename.open() as infile:
             lines = list(infile.readlines())
@@ -47,7 +49,7 @@ class Words:
                         (count := int(count_str)) > count_thresh
                         and len(word) >= len_min
                         and len(word) <= len_max
-                        and re.match(r"^[^\W\d_]+$", word)
+                        and re.match(r"^[A-ZÄÖÜa-zßäöü][a-zßäöü]*$", word)
                     )
                 ],
                 key=lambda e: e[1],
@@ -60,6 +62,14 @@ class Words:
         if len(self._all_words) < self._num_words:
             raise Error(f"Expected at least {self._num_words} words, found {len(self._all_words)}")
 
+        self._similarity = np.empty((self._word_len + 1) ** 2).reshape(
+            self._word_len + 1,
+            self._word_len + 1,
+        )
+        for i in range(1, self._word_len):
+            self._similarity[0, i] = i
+            self._similarity[i, 0] = i
+
     @property
     def _word_len(self) -> int:
         return len(self._all_words)
@@ -70,24 +80,18 @@ class Words:
         assert isinstance(result, int)
         return result
 
-    def _optimize(self) -> list[str]:
+    def optimize(self, filename: Path) -> None:
         stale = 0
         score: Optional[int] = None
-
-        similarity = np.empty((self._word_len + 1) ** 2).reshape(
-            self._word_len + 1,
-            self._word_len + 1,
-        )
-        for i in range(1, self._word_len):
-            similarity[0, i] = i
-            similarity[i, 0] = i
 
         for li in range(0, self._word_len):
             for ri in range(0, self._word_len):
                 if li < ri:
-                    similarity[li + 1, ri + 1] = 1.0 - jellyfish.jaro_winkler_similarity(
-                        self._all_words[li][0],
-                        self._all_words[ri][0],
+                    self._similarity[li + 1, ri + 1] = float(
+                        jellyfish.damerau_levenshtein_distance(
+                            self._all_words[li][0],
+                            self._all_words[ri][0],
+                        ),
                     )
             if li % 100 == 0:
                 logging.log(
@@ -97,34 +101,39 @@ class Words:
                 )
 
         steps = 0
-        while stale < self._stale_thresh:
+        while stale < self._stale_thresh and (not self._step_thresh or steps < self._step_thresh):
             inner = random.randint(1, self._num_words)  # noqa: S311
             outer = self._num_words
             while outer <= len(self._all_words):
-                similarity[:, [inner, outer]] = similarity[:, [outer, inner]]
-                similarity[[inner, outer], :] = similarity[[outer, inner], :]
+                self._similarity[:, [inner, outer]] = self._similarity[:, [outer, inner]]
+                self._similarity[[inner, outer], :] = self._similarity[[outer, inner], :]
                 temp = np.sum(
-                    similarity[1 : self._num_words + 1, 1 : self._num_words + 1],
+                    self._similarity[1 : self._num_words + 1, 1 : self._num_words + 1],
                 )
 
                 steps += 1
-                if score is None or temp < score - 0.0001:
+                if score is None or temp > score:
                     stale = 0
                     score = temp
-                    logging.log(logging.INFO, "Optimizing: %.1f [%d]", score, steps)
+                    logging.log(
+                        logging.INFO,
+                        "Optimizing: %.1f [%d/%d]",
+                        score,
+                        steps,
+                        self._step_thresh,
+                    )
+                    self.write(filename)
                     break
 
-                similarity[[outer, inner], :] = similarity[[inner, outer], :]
-                similarity[:, [outer, inner]] = similarity[:, [inner, outer]]
+                self._similarity[[outer, inner], :] = self._similarity[[inner, outer], :]
+                self._similarity[:, [outer, inner]] = self._similarity[:, [inner, outer]]
                 stale += 1
                 outer += 1
 
-        return sorted(
-            self._all_words[int(index)][0] for index in similarity[0, 1 : self._num_words + 1]
-        )
-
     def write(self, filename: Path) -> None:
-        words = self._optimize()
+        words = sorted(
+            self._all_words[int(index)][0] for index in self._similarity[0, 1 : self._num_words + 1]
+        )
         with filename.open("w+") as outfile:
             for i in range(0, self._num_words):
                 print(f"{dice_str(i, self._num_dice)} {words[i]}", file=outfile)

@@ -56,15 +56,25 @@ if __name__ == "__main__":
             " is considered stale (default: %(default)d)"
         ),
     )
+    parser.add_argument(
+        "-S",
+        "--step-thresh",
+        type=int,
+        default=10000,
+        help=("Maximum number of optimizations steps to perfom (default: %(default)d)"),
+    )
     arguments = parser.parse_args()
 
     logging.basicConfig(format="[%(asctime)s] %(message)s", level=logging.INFO)
 
-    dl.Words(
+    words = dl.Words(
         arguments.infile,
         num_dice=arguments.num_dice,
         count_thresh=arguments.count_thresh,
         len_max=arguments.len_max,
         len_min=arguments.len_min,
         stale_thresh=arguments.stale_thresh,
-    ).write(arguments.outfile)
+        step_thresh=arguments.step_thresh,
+    )
+    words.optimize(arguments.outfile)
+    words.write(arguments.outfile)

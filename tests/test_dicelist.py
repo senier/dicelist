@@ -29,6 +29,7 @@ def test_invalid_words(len_min: int, error: str) -> None:
             len_min=len_min,
             len_max=1000,
             stale_thresh=0,
+            step_thresh=None,
         )
 
 
@@ -41,4 +42,5 @@ def test_valid_words(tmpdir: Path) -> None:
         len_min=1,
         len_max=100,
         stale_thresh=1,
-    ).write(output)
+        step_thresh=None,
+    ).optimize(output)
