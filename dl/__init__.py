@@ -1,3 +1,19 @@
+#
+# Copyright 2023 Alexander Senier
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 from __future__ import annotations
 
 import logging
@@ -87,7 +103,7 @@ class Words:
         for li in range(0, self._word_len):
             for ri in range(0, self._word_len):
                 if li < ri:
-                    self._similarity[li + 1, ri + 1] = float(
+                    self._similarity[li + 1, ri + 1] = 10.0 ** -float(
                         jellyfish.damerau_levenshtein_distance(
                             self._all_words[li][0],
                             self._all_words[ri][0],
@@ -112,12 +128,12 @@ class Words:
                 )
 
                 steps += 1
-                if score is None or temp > score:
+                if score is None or temp < score:
                     stale = 0
                     score = temp
                     logging.log(
                         logging.INFO,
-                        "Optimizing: %.1f [%d/%d]",
+                        "Optimizing: %.3f [%d/%d]",
                         score,
                         steps,
                         self._step_thresh,
