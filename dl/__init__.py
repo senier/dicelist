@@ -78,7 +78,7 @@ class Words:
         if len(self._all_words) < self._num_words:
             raise Error(f"Expected at least {self._num_words} words, found {len(self._all_words)}")
 
-        self._similarity = np.empty((self._word_len + 1) ** 2).reshape(
+        self._similarity = np.empty((self._word_len + 1) ** 2, dtype=np.float32).reshape(
             self._word_len + 1,
             self._word_len + 1,
         )

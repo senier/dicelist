@@ -1,13 +1,13 @@
 all: check test
 
-PYTHON_PACKAGES = dicelist dl/*.py tests/*.py
+PYTHON_PACKAGES = dicelist dl/*.py tests/*.py tools/trainphrase.py
 
 include .devutils/Makefile.common
 
 check: pyproject.toml
 
 test:
-	pytest -vv --cov=dl --cov=tests --cov-branch --cov-fail-under=0 --cov-report= tests/
+	pytest -vv --cov=dl --cov=tests --cov=tools --cov-branch --cov-fail-under=0 --cov-report= tests/ tools/trainphrase.py
 	coverage report --fail-under=100.0 --show-missing --skip-covered
 
 install_devel: .devutils/Makefile
